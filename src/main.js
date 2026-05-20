@@ -295,12 +295,12 @@ window.__kydo = {
 };
 
 console.log(
-  '%cKydo Phase 3',
-  'font: 14px ui-monospace; color: #c9b27a; padding: 4px 0;',
-  `\n  cycle: ${CYCLE_SECONDS}s · hold: ${HOLD_SECONDS}s · vault: ${vault.length} entries · mic: ${NO_MIC ? 'disabled' : 'click to start'}` +
-    '\n  SPACE = fire now · P = pause/resume · M = start mic' +
+  '%cKydo',
+  'font: 14px ui-monospace; color: #C7D1FF; padding: 4px 0;',
+  `\n  cycle: ${CYCLE_SECONDS}s · hold: ${HOLD_SECONDS}s · vault: ${vault.length} entries · triggers: ${TRIGGERS.length} · mic: ${NO_MIC ? 'disabled' : 'click to start'}` +
+    '\n  SPACE / Cmd+Enter = fire now · P = pause/resume · M = start mic' +
     '\n  ?fast = dev timing · ?debug = overlay · ?nomic = skip mic' +
-    '\n  __kydo.log for the event log'
+    '\n  __kydo.log = event log · __kydo.testTrigger("hey kydo") = test a trigger'
 );
 
 function formatSeconds(s) {

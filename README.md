@@ -62,13 +62,14 @@ URL params:
 - `?nomic` — skip the mic and start gate entirely; runs from vault on timer.
 
 Keyboard (display window must be focused):
-- `Space` — fire a question immediately (with mid-sentence guard).
+- `Space` or `Cmd+Enter` — fire a question immediately (manual fire bypasses the mid-sentence guard).
 - `P` — pause / resume the timer.
 - `M` — start/retry mic.
 
 Browser console:
-- `__kydo.log` — in-memory event log (transcripts, generations, judge decisions, fires).
-- `__kydo.transcript.getRecent()` — current rolling 90s buffer.
+- `__kydo.log` — in-memory event log (transcripts, generations, judge decisions, fires, triggers).
+- `__kydo.transcript.getRecent()` — current rolling transcript window (4 minutes).
+- `__kydo.testTrigger("hey kydo")` — fire a trigger reply without speaking.
 
 ## Architecture
 
@@ -131,13 +132,27 @@ Open `http://localhost:5174/rehearse.html` before the event.
 
 Open `/control.html` on your phone over LAN. Big-target buttons:
 
-- **Fire now** — manual fire, overrides the 5-min timer (still respects the mid-sentence guard).
+- **Fire now** — manual fire, overrides the 5-min timer (bypasses the mid-sentence guard — a manual press fires immediately).
 - **Skip current** — dismiss the on-screen question and reset the cycle.
 - **Pause 5 min** — push the next fire back by 5 minutes.
 - **Resume** — undo a pause.
 - **Kill** — stop all firing until you Revive.
 
 State (phase, time to next, mic, fired count, last question) refreshes every 1.5s.
+
+## Audio triggers
+
+Spoken phrases that make Kydo respond instantly with a canned line, bypassing the LLM. Defined in `src/triggers.js`:
+
+| You say | Kydo shows (`$reply = "…"`) |
+|---|---|
+| "hi Kydo" | hi there, how are you doing over there in atoms? |
+| "hey Kydo" | What's up? |
+
+- Detection latency is ~2.5–3.5s (2.5s audio chunks + Whisper round-trip). This is decoupled from question generation, which draws on a wider 4-minute window for context.
+- Matching is generous about Whisper mishearing "Kydo" (kaido, kiddo, kyoto, keto…) and spans the chunk boundary so a greeting split across it still fires.
+- 15s per-trigger cooldown; won't interrupt an in-progress question; respects Kill.
+- Add more: append `{ id, pattern: greeting('word'), response: '…' }` to `TRIGGERS` in `src/triggers.js`.
 
 ## Files
 
@@ -151,14 +166,16 @@ index.html                display (fullscreen)
 rehearse.html             pre-event rehearsal + vault editor
 control.html              phone remote
 src/
-  main.js                 display state machine, scheduler, remote integration
-  ui.js                   UI controller (states, start gate, debug overlay)
-  audio.js                mic capture + chunked Whisper POST
-  transcript.js           rolling 90s buffer
+  main.js                 display state machine, scheduler, triggers, remote integration
+  ui.js                   UI controller (states, typewriter, start gate, debug overlay)
+  audio.js                mic capture + chunked Whisper POST (2.5s chunks)
+  transcript.js           rolling 4-minute buffer
   generator.js            client-side generation coordinator
   filters.js              local rule-based check
+  whisper-filter.js       strips Whisper hallucinations from transcript chunks
+  triggers.js             spoken-phrase triggers ("hey Kydo" → canned reply)
   vault.json              exemplars + fallback questions
-  styles.css              display: dark, breathing K, italic serif, mic-driven wave
+  styles.css              display: dark, Roboto Mono, breathing K, mic-driven wave
   rehearse.js / .css      rehearsal page
   control.js  / .css      phone remote
 logs/                     (gitignored) reserved for future event logs
