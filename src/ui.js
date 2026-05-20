@@ -5,6 +5,8 @@ export function setupUI({ debug = false } = {}) {
   const qText = document.getElementById('question-text');
   const qHead = document.querySelector('.question-head');
   const qFoot = document.querySelector('.question-foot');
+  const markEl = document.querySelector('.mark');           // the $state value
+  const kwEl = document.getElementById('state-keywords');   // live keyword ticker
   const dbgEl = document.getElementById('debug');
   const dbgPhase = document.getElementById('dbg-phase');
   const dbgNext = document.getElementById('dbg-next');
@@ -62,8 +64,46 @@ export function setupUI({ debug = false } = {}) {
     const remaining = Math.max(500, holdMs - typingMs);
     await wait(remaining);
 
+    // Erase the line in reverse — like deleting it — instead of a plain fade.
+    qText.classList.add('erasing');
+    await eraseTypewriter(qText);
+    qText.classList.remove('erasing');
+
     setPhase('listening');
-    await wait(800);
+    setStateLabel('listening'); // back to idle exactly as the listening view returns
+    await wait(400);
+  }
+
+  // Reverse typewriter: remove characters from the end, faster than typing.
+  async function eraseTypewriter(el) {
+    const chars = [...el.textContent];
+    for (let i = chars.length - 1; i >= 0; i--) {
+      el.textContent = chars.slice(0, i).join('');
+      await wait(16);
+    }
+  }
+
+  // The $state value: 'listening' (idle) or 'typing' (composing a line).
+  function setStateLabel(text) {
+    if (markEl) markEl.textContent = text;
+  }
+
+  // Live keyword ticker after "listening_". Pass an array of recent keywords.
+  function setKeywords(words) {
+    if (!kwEl) return;
+    kwEl.innerHTML = '';
+    words.forEach((w, i) => {
+      if (i > 0) {
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.textContent = '·';
+        kwEl.appendChild(sep);
+      }
+      const span = document.createElement('span');
+      span.className = 'kw';
+      span.textContent = w;
+      kwEl.appendChild(span);
+    });
   }
 
   async function typewriter(el, text) {
@@ -124,6 +164,8 @@ export function setupUI({ debug = false } = {}) {
     setPhase,
     setDebug,
     appendTranscript,
+    setStateLabel,
+    setKeywords,
     showStartGate,
     hideStartGate,
     showStartError,

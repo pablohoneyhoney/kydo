@@ -114,6 +114,33 @@ html, body {
   50%      { opacity: 1; }
 }
 
+/* Live keywords being heard — sit after "listening_", lighter than the value.
+ * Signals Kydo is interpreting the conversation. */
+.keywords {
+  margin-left: 1.2em;
+  font-size: 0.62em;        /* relative to .mark-line */
+  letter-spacing: 0.02em;
+  color: var(--dim);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.keywords .kw {
+  color: var(--dim);
+  animation: kw-in 600ms var(--ease-out) both;
+}
+
+.keywords .sep {
+  color: var(--syntax);
+  margin: 0 0.5em;
+}
+
+@keyframes kw-in {
+  from { opacity: 0; }
+  to   { opacity: 0.85; }
+}
+
 /* The mark fades fully out in question state */
 .state-question .mark-line {
   opacity: 0;
@@ -260,6 +287,12 @@ body.mic-active .state-listening .mark {
 /* While actively typing, caret blinks faster — gives it the "writing" tempo */
 .question p.typing::after {
   animation: blink 0.55s steps(1, end) infinite;
+}
+
+/* While erasing, caret is solid — an active delete cursor, not a waiting one */
+.question p.erasing::after {
+  animation: none;
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

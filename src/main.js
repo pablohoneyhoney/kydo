@@ -7,6 +7,7 @@ import { TranscriptBuffer } from './transcript.js';
 import { Generator } from './generator.js';
 import { cleanChunk } from './whisper-filter.js';
 import { matchTrigger, TRIGGERS } from './triggers.js';
+import { extractTopicKeywords } from './filters.js';
 import vault from './vault.json';
 
 // --- Config ---------------------------------------------------------
@@ -37,6 +38,17 @@ let micState = 'off';
 let lastTranscriptAt = 0;  // for debug visibility only
 let lastSpeechAt = 0;       // amplitude-based; this is what the guard reads
 let prevTriggerChunk = '';  // last cleaned chunk, for boundary-spanning trigger match
+let recentKeywords = [];    // rolling keywords shown after "listening_"
+
+function updateKeywords(chunkText) {
+  const fresh = extractTopicKeywords(chunkText);
+  for (const k of fresh) {
+    recentKeywords = recentKeywords.filter((x) => x !== k); // dedupe, move to newest
+    recentKeywords.push(k);
+  }
+  recentKeywords = recentKeywords.slice(-6); // keep the 6 most recent
+  ui.setKeywords(recentKeywords);
+}
 
 mic.onAmplitude((avg) => {
   const boosted = Math.min(1, avg * 2.2);
@@ -57,6 +69,9 @@ mic.onTranscript((text) => {
   lastTranscriptAt = Date.now();
   ui.appendTranscript(cleaned);
   logEvent({ type: 'transcript', text: cleaned });
+
+  // Surface keywords being heard — a live signal that Kydo is interpreting the room.
+  updateKeywords(cleaned);
 
   // Audio trigger? Respond immediately with a canned line (bypasses the LLM).
   // Match across the previous + current chunk so a greeting split across the
@@ -198,12 +213,14 @@ async function fireWithGuard() {
 }
 
 async function fire() {
+  // Kydo is composing — flip the state label while we generate + type.
+  ui.setStateLabel('typing');
   // Run generator (may hit LLM or fall back to vault).
   const result = await generator.generate({ transcript: transcript.getRecent() });
   fired += 1;
   lastQuestionText = result.question;
   logEvent({ type: 'fire', source: result.source, question: result.question, attempts: result.attempts });
-  await ui.showQuestion(result.question, HOLD_SECONDS * 1000);
+  await ui.showQuestion(result.question, HOLD_SECONDS * 1000); // resets label to 'listening' on exit
   nextFireAt = Date.now() + CYCLE_SECONDS * 1000;
 }
 
@@ -250,8 +267,9 @@ function fireTrigger(trigger) {
   fired += 1;
   lastQuestionText = trigger.response;
   firingInProgress = true;
+  ui.setStateLabel('typing');
   ui.showQuestion(trigger.response, TRIGGER_HOLD_MS, { kind: 'reply' }).finally(() => {
-    firingInProgress = false;
+    firingInProgress = false; // showQuestion resets the state label to 'listening' on exit
     // Reset the auto-timer so a scheduled question doesn't immediately follow the reply.
     nextFireAt = Date.now() + CYCLE_SECONDS * 1000;
   });
