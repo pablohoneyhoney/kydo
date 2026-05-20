@@ -88,22 +88,18 @@ export function setupUI({ debug = false } = {}) {
     if (markEl) markEl.textContent = text;
   }
 
-  // Live keyword ticker after "listening_". Pass an array of recent keywords.
-  function setKeywords(words) {
+  // Single live keyword after "listening_". Re-renders (and re-fades) only when the
+  // word actually changes, so it doesn't flicker on every transcript chunk.
+  function setKeyword(word) {
     if (!kwEl) return;
+    if (!word) { kwEl.innerHTML = ''; kwEl.dataset.kw = ''; return; }
+    if (kwEl.dataset.kw === word) return;
+    kwEl.dataset.kw = word;
     kwEl.innerHTML = '';
-    words.forEach((w, i) => {
-      if (i > 0) {
-        const sep = document.createElement('span');
-        sep.className = 'sep';
-        sep.textContent = '·';
-        kwEl.appendChild(sep);
-      }
-      const span = document.createElement('span');
-      span.className = 'kw';
-      span.textContent = w;
-      kwEl.appendChild(span);
-    });
+    const span = document.createElement('span');
+    span.className = 'kw';
+    span.textContent = word;
+    kwEl.appendChild(span);
   }
 
   async function typewriter(el, text) {
@@ -165,7 +161,7 @@ export function setupUI({ debug = false } = {}) {
     setDebug,
     appendTranscript,
     setStateLabel,
-    setKeywords,
+    setKeyword,
     showStartGate,
     hideStartGate,
     showStartError,

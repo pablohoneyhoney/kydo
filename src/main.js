@@ -7,7 +7,7 @@ import { TranscriptBuffer } from './transcript.js';
 import { Generator } from './generator.js';
 import { cleanChunk } from './whisper-filter.js';
 import { matchTrigger, TRIGGERS } from './triggers.js';
-import { extractTopicKeywords } from './filters.js';
+import { pickNotableKeyword } from './filters.js';
 import vault from './vault.json';
 
 // --- Config ---------------------------------------------------------
@@ -38,16 +38,21 @@ let micState = 'off';
 let lastTranscriptAt = 0;  // for debug visibility only
 let lastSpeechAt = 0;       // amplitude-based; this is what the guard reads
 let prevTriggerChunk = '';  // last cleaned chunk, for boundary-spanning trigger match
-let recentKeywords = [];    // rolling keywords shown after "listening_"
+// One notable keyword shown after "listening_". It holds, and only swaps when a
+// genuinely more relevant word appears — no constant flicker.
+let currentKeyword = '';
+let currentKeywordAt = 0;
+const KEYWORD_MIN_HOLD_MS = 5000; // don't change the displayed word more often than this
 
 function updateKeywords(chunkText) {
-  const fresh = extractTopicKeywords(chunkText);
-  for (const k of fresh) {
-    recentKeywords = recentKeywords.filter((x) => x !== k); // dedupe, move to newest
-    recentKeywords.push(k);
+  const best = pickNotableKeyword(chunkText);
+  if (!best) return; // nothing notable this chunk — keep showing the current word
+  const now = Date.now();
+  if (best !== currentKeyword && now - currentKeywordAt >= KEYWORD_MIN_HOLD_MS) {
+    currentKeyword = best;
+    currentKeywordAt = now;
+    ui.setKeyword(best);
   }
-  recentKeywords = recentKeywords.slice(-6); // keep the 6 most recent
-  ui.setKeywords(recentKeywords);
 }
 
 mic.onAmplitude((avg) => {

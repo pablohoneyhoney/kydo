@@ -104,6 +104,56 @@ export function extractTopicKeywords(text) {
   )].slice(0, 5);
 }
 
+// High-frequency content words that pass the basic stopword filter but are NOT
+// notable — they don't inform a question. Used only by pickNotableKeyword.
+const COMMON = new Set([
+  'right','little','behind','school','letter','letters','number','numbers',
+  'thing','things','stuff','kind','sort','part','parts','point','points',
+  'place','places','side','fact','facts','case','cases','idea','ideas',
+  'really','actually','basically','literally','totally','pretty','maybe',
+  'probably','perhaps','quite','rather','almost','enough','around','before',
+  'after','again','still','always','never','often','sometimes','usually',
+  'mostly','instead','anyway','though','although','because','since','while',
+  'during','between','within','without','against','toward','towards',
+  'getting','going','doing','having','being','trying','looking','talking',
+  'saying','coming','making','taking','giving','putting','started','wanted',
+  'needed','called','asked','looked','seemed','happened','think','thought',
+  'thinks','knew','knows','mean','meant','means','wants','needs','feel',
+  'felt','feels','seems','looks','gets','came','went','said','says','tell',
+  'tells','told','gonna','wanna','kinda','sorta','yeah','okay','alright',
+  'better','worse','worst','more','most','less','least','much','many','every',
+  'each','both','either','neither','another','other','others','same',
+  'different','certain','clear','simple','good','great','nice','cool','weird',
+  'crazy','interesting','important','special','normal','regular','usual',
+  'common','similar','people','person','guys','everyone','everybody',
+  'someone','somebody','anyone','anybody','nobody','something','anything',
+  'everything','nothing','first','second','third','again','today','tonight',
+  'yesterday','tomorrow','little','about','their','there','these','those',
+  'whole','entire','actual','exactly','basically','obviously','definitely',
+]);
+
+/**
+ * Pick the single most notable word from a chunk — the kind of word that could
+ * inform the next question. Filters stopwords + common chatter, requires a bit of
+ * length, and rewards proper-noun-like capitalization (Houdini, Maya, Barbarian).
+ * Returns a lowercase word, or null if nothing notable is present.
+ */
+export function pickNotableKeyword(text) {
+  if (!text) return null;
+  let best = null;
+  let bestScore = -1;
+  for (const raw of text.split(/\s+/)) {
+    const clean = raw.replace(/[^A-Za-z]/g, '');
+    if (clean.length < 5) continue;
+    const lower = clean.toLowerCase();
+    if (STOP.has(lower) || COMMON.has(lower)) continue;
+    let score = clean.length;                   // longer ~ more substantial
+    if (/^[A-Z][a-z]/.test(clean)) score += 4;  // proper-noun-ish bonus
+    if (score > bestScore) { bestScore = score; best = lower; }
+  }
+  return best;
+}
+
 function escape(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
