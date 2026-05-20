@@ -68,6 +68,11 @@ mic.onTranscript((text) => {
 });
 
 mic.onError((err) => {
+  // Silent chunks are gated before Whisper — expected, not an error; log quietly.
+  if (err.stage === 'gated-silent') {
+    logEvent({ type: 'gated-silent', peak: err.peak });
+    return;
+  }
   console.warn('[kydo] mic/transcribe error', err);
   if (err.stage === 'transcribe' && err.status === 503) {
     micState = 'no-key';

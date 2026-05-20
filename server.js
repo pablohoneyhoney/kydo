@@ -150,7 +150,10 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     fd.append('model', 'whisper-1');
     fd.append('language', 'en');
     fd.append('response_format', 'json');
-    fd.append('prompt', 'Pablo Honey, Robert Hodgin, Flight404, Houdini, Cinder, Rare Volume, Automattic, generative art.');
+    // Light proper-noun bias for accuracy. Deliberately NO "Flight404" — it made
+    // Whisper hallucinate "www.Flight404.com" on quiet audio. The amplitude gate in
+    // audio.js now prevents silent chunks reaching Whisper, but we keep this minimal.
+    fd.append('prompt', 'Robert Hodgin, Houdini, Cinder, Rare Volume, Automattic, generative art.');
 
     const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',

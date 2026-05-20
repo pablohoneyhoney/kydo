@@ -18,6 +18,12 @@
 const CHUNK_MS = 2500;
 const RESTART_GAP_MS = 60; // small gap between MediaRecorder cycles; acceptable for our use
 
+// Silence gate: if a chunk's peak mic amplitude (raw, 0..1) never crossed this, the
+// chunk is NOT sent to Whisper. This is the root-cause fix for silence hallucinations
+// ("Thank you for watching", "www.Flight404.com", etc.) — Whisper can't hallucinate on
+// audio it never receives. Tune at the venue: room tone sits ~0.005-0.02, speech ~0.05+.
+const SILENCE_GATE = 0.035;
+
 export class Mic {
   constructor() {
     this.stream = null;
@@ -32,6 +38,7 @@ export class Mic {
     this.errorHandlers = new Set();
     this.running = false;
     this.mimeType = pickMimeType();
+    this.chunkPeak = 0; // peak amplitude within the current recording chunk
   }
 
   isSupported() {
@@ -101,6 +108,7 @@ export class Mic {
       let sum = 0;
       for (let i = 0; i < this.dataArray.length; i++) sum += this.dataArray[i];
       const avg = sum / this.dataArray.length / 255;
+      if (avg > this.chunkPeak) this.chunkPeak = avg; // track peak for the silence gate
       this._emit(this.amplitudeHandlers, avg);
       requestAnimationFrame(tick);
     };
@@ -125,9 +133,13 @@ export class Mic {
     this.recorder.addEventListener('stop', async () => {
       const blob = new Blob(chunks, { type: this.recorder.mimeType || this.mimeType });
       chunks = [];
+      const peak = this.chunkPeak; // peak amplitude observed during this chunk
       this._emit(this.chunkHandlers, blob);
-      if (blob.size > 0) {
+      if (blob.size > 0 && peak >= SILENCE_GATE) {
         this._transcribe(blob);
+      } else if (blob.size > 0) {
+        // Silent chunk — skip Whisper entirely so it can't hallucinate on it.
+        this._emit(this.errorHandlers, { stage: 'gated-silent', peak: Number(peak.toFixed(3)) });
       }
       if (this.running) {
         // small gap before next cycle so we don't tail-bite ourselves
@@ -135,6 +147,7 @@ export class Mic {
       }
     });
 
+    this.chunkPeak = 0; // reset peak for this chunk's window
     this.recorder.start();
 
     this.recorderTimer = setTimeout(() => {

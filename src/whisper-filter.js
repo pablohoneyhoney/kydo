@@ -23,13 +23,19 @@ const HALLUCINATIONS = [
   /\bsubtitled by\b[^.!?]*/gi,
   /\btranscription by\b[^.!?]*/gi,
 
-  // Goodbyes that show up with no prompt
+  // Standalone thank-yous / goodbyes Whisper emits on quiet audio
+  /\bthank ?you (very much|so much)\b[.!]?/gi,
+  /\bthanks,? (guys|everyone|all)\b!?/gi,
+  /\bgood ?night\b[.,!]?/gi,
   /^bye[\s,!.-]*bye!?\.?$/gi,
   /^bye!?\.?$/gi,
 
-  // The Spanish-blog URL Whisper loves to hallucinate
+  // URLs Whisper loves to hallucinate (flydreamers = Spanish blog; flight404 = the
+  // guest's handle, which we removed from the Whisper prompt but block here too)
   /\bwww\.flydreamers\.com\b/gi,
   /\bflydreamers\.com\b/gi,
+  /\bwww\.flight404\.com\b/gi,
+  /\bflight404\.com\b/gi,
 
   // Music / non-speech notations
   /\[música[^\]]*\]/gi,
