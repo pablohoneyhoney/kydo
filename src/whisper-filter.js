@@ -37,6 +37,13 @@ const HALLUCINATIONS = [
   /\bwww\.flight404\.com\b/gi,
   /\bflight404\.com\b/gi,
 
+  // Video-credit hallucinations (YouTube training leftovers on near-silence)
+  /copyright\s*©[^.!?]*/gi,
+  /©\s*\d{4}[^.!?]*/g,
+  /\ball rights reserved\b\.?/gi,
+  /\belement animation\b[^.!?]*/gi,
+  /\bzazzy\b[^.!?]*/gi,
+
   // Music / non-speech notations
   /\[música[^\]]*\]/gi,
   /\[music\]/gi,

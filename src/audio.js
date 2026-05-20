@@ -18,11 +18,12 @@
 const CHUNK_MS = 2500;
 const RESTART_GAP_MS = 60; // small gap between MediaRecorder cycles; acceptable for our use
 
-// Silence gate: if a chunk's peak mic amplitude (raw, 0..1) never crossed this, the
-// chunk is NOT sent to Whisper. This is the root-cause fix for silence hallucinations
-// ("Thank you for watching", "www.Flight404.com", etc.) — Whisper can't hallucinate on
-// audio it never receives. Tune at the venue: room tone sits ~0.005-0.02, speech ~0.05+.
-const SILENCE_GATE = 0.035;
+// Silence gate: if a chunk's AVERAGE mic amplitude (raw, 0..1) stays below this, the
+// chunk is NOT sent to Whisper, so it can't hallucinate on near-silence. Average (not
+// peak) is used so a single transient — a click, a chair creak — doesn't open the gate.
+// With AGC off + noise suppression on, true silence sits very low and speech clears it
+// easily. Tune at the venue by watching __kydo.log chunk levels (see main.js).
+const SILENCE_GATE_AVG = 0.012;
 
 export class Mic {
   constructor() {
@@ -38,7 +39,9 @@ export class Mic {
     this.errorHandlers = new Set();
     this.running = false;
     this.mimeType = pickMimeType();
-    this.chunkPeak = 0; // peak amplitude within the current recording chunk
+    this.chunkPeak = 0;  // peak amplitude within the current recording chunk
+    this.chunkSum = 0;   // running sum of per-frame amplitude (for the average gate)
+    this.chunkCount = 0; // number of frames summed this chunk
   }
 
   isSupported() {
@@ -54,7 +57,10 @@ export class Mic {
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true,
+        // CRITICAL: AGC off. With it on, the mic boosts its gain in a quiet room until
+        // the noise floor reads as loud — silent chunks then pass the gate and Whisper
+        // hallucinates credits/sign-offs on them. Off = amplitude reflects real input.
+        autoGainControl: false,
         sampleRate: 16000,
       },
     });
@@ -108,7 +114,9 @@ export class Mic {
       let sum = 0;
       for (let i = 0; i < this.dataArray.length; i++) sum += this.dataArray[i];
       const avg = sum / this.dataArray.length / 255;
-      if (avg > this.chunkPeak) this.chunkPeak = avg; // track peak for the silence gate
+      if (avg > this.chunkPeak) this.chunkPeak = avg; // peak (info only)
+      this.chunkSum += avg;                            // for the average-based gate
+      this.chunkCount += 1;
       this._emit(this.amplitudeHandlers, avg);
       requestAnimationFrame(tick);
     };
@@ -133,13 +141,19 @@ export class Mic {
     this.recorder.addEventListener('stop', async () => {
       const blob = new Blob(chunks, { type: this.recorder.mimeType || this.mimeType });
       chunks = [];
-      const peak = this.chunkPeak; // peak amplitude observed during this chunk
+      const peak = this.chunkPeak;
+      const avg = this.chunkCount > 0 ? this.chunkSum / this.chunkCount : 0;
+      const sent = blob.size > 0 && avg >= SILENCE_GATE_AVG;
       this._emit(this.chunkHandlers, blob);
-      if (blob.size > 0 && peak >= SILENCE_GATE) {
+      // Always report levels so the gate threshold can be tuned at the venue.
+      this._emit(this.errorHandlers, {
+        stage: sent ? 'chunk-sent' : 'gated-silent',
+        avg: Number(avg.toFixed(4)),
+        peak: Number(peak.toFixed(4)),
+        gate: SILENCE_GATE_AVG,
+      });
+      if (sent) {
         this._transcribe(blob);
-      } else if (blob.size > 0) {
-        // Silent chunk — skip Whisper entirely so it can't hallucinate on it.
-        this._emit(this.errorHandlers, { stage: 'gated-silent', peak: Number(peak.toFixed(3)) });
       }
       if (this.running) {
         // small gap before next cycle so we don't tail-bite ourselves
@@ -147,7 +161,10 @@ export class Mic {
       }
     });
 
-    this.chunkPeak = 0; // reset peak for this chunk's window
+    // reset per-chunk amplitude accumulators
+    this.chunkPeak = 0;
+    this.chunkSum = 0;
+    this.chunkCount = 0;
     this.recorder.start();
 
     this.recorderTimer = setTimeout(() => {

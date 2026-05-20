@@ -88,9 +88,11 @@ mic.onTranscript((text) => {
 });
 
 mic.onError((err) => {
-  // Silent chunks are gated before Whisper — expected, not an error; log quietly.
-  if (err.stage === 'gated-silent') {
-    logEvent({ type: 'gated-silent', peak: err.peak });
+  // Per-chunk audio levels (gated or sent) — not errors; log quietly for tuning.
+  // At the venue: __kydo.levels() prints recent silence vs speech averages so you
+  // can set SILENCE_GATE_AVG (src/audio.js) between the two.
+  if (err.stage === 'gated-silent' || err.stage === 'chunk-sent') {
+    logEvent({ type: 'level', sent: err.stage === 'chunk-sent', avg: err.avg, peak: err.peak });
     return;
   }
   console.warn('[kydo] mic/transcribe error', err);
@@ -319,6 +321,18 @@ window.__kydo = {
     const t = matchTrigger(text);
     if (t) fireTrigger(t);
     return t ? t.id : null;
+  },
+  // Tuning helper: prints recent chunk levels (silence vs speech) so you can set
+  // SILENCE_GATE_AVG in src/audio.js. Stay quiet for a few seconds, then talk, then run it.
+  levels: () => {
+    const ls = eventLog.filter((e) => e.type === 'level').slice(-20);
+    const silent = ls.filter((e) => !e.sent).map((e) => e.avg);
+    const sent = ls.filter((e) => e.sent).map((e) => e.avg);
+    const stat = (a) => (a.length ? `min ${Math.min(...a)} · max ${Math.max(...a)} · n ${a.length}` : 'none');
+    console.log('[kydo] gated (silence) avg:', stat(silent));
+    console.log('[kydo] sent (speech)   avg:', stat(sent));
+    console.table(ls.map((e) => ({ sent: e.sent, avg: e.avg, peak: e.peak })));
+    return ls;
   },
 };
 

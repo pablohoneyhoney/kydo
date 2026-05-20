@@ -114,26 +114,18 @@ html, body {
   50%      { opacity: 1; }
 }
 
-/* Live keywords being heard — sit after "listening_", lighter than the value.
- * Signals Kydo is interpreting the conversation. */
+/* One live keyword being heard — sits right after "listening_", same size as the
+ * "$state" line, just dimmer. Signals Kydo is interpreting the conversation. */
 .keywords {
-  margin-left: 1.2em;
-  font-size: 0.62em;        /* relative to .mark-line */
-  letter-spacing: 0.02em;
+  margin-left: 0.6em;       /* one mono character — no extra gap */
+  letter-spacing: 0.005em;  /* match the mark-line */
   color: var(--dim);
-  vertical-align: middle;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .keywords .kw {
   color: var(--dim);
   animation: kw-in 600ms var(--ease-out) both;
-}
-
-.keywords .sep {
-  color: var(--syntax);
-  margin: 0 0.5em;
 }
 
 @keyframes kw-in {
