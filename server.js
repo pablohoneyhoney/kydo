@@ -150,10 +150,10 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     fd.append('model', 'whisper-1');
     fd.append('language', 'en');
     fd.append('response_format', 'json');
-    // Light proper-noun bias for accuracy. Deliberately NO "Flight404" — it made
-    // Whisper hallucinate "www.Flight404.com" on quiet audio. The amplitude gate in
-    // audio.js now prevents silent chunks reaching Whisper, but we keep this minimal.
-    fd.append('prompt', 'Robert Hodgin, Houdini, Cinder, Rare Volume, Automattic, generative art.');
+    fd.append('temperature', '0'); // deterministic; less prone to invented filler
+    // NO `prompt` bias. A prompt makes Whisper echo it verbatim on near-silent audio —
+    // it will literally print "Robert Hodgin, Houdini, Cinder..." as if transcribed.
+    // Minor proper-noun misspellings are fine; the LLM and keyword picker tolerate them.
 
     const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',

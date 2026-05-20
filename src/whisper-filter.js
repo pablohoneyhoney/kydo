@@ -37,6 +37,13 @@ const HALLUCINATIONS = [
   /\bwww\.flight404\.com\b/gi,
   /\bflight404\.com\b/gi,
 
+  // Whisper prompt-echo: the old proper-noun bias list printed back verbatim on
+  // near-silence (a comma-run of these seed terms is not natural speech).
+  /\b(robert hodgin|houdini|cinder|rare volume|automattic|generative art|flight404)\b(\s*,\s*(robert hodgin|houdini|cinder|rare volume|automattic|generative art|flight ?404|dlm)\b\.?)+/gi,
+  /\bplease appreciate the visuals\b[.!]?/gi,
+  /\bflight ?404 dlm\b[^.!?]*/gi,
+  /\bwright associate professor\b[^.!?]*/gi,
+
   // Video-credit hallucinations (YouTube training leftovers on near-silence)
   /copyright\s*©[^.!?]*/gi,
   /©\s*\d{4}[^.!?]*/g,
