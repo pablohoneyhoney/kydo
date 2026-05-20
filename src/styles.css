@@ -117,7 +117,7 @@ html, body {
 /* One live keyword being heard — sits right after "listening_", same size as the
  * "$state" line, just dimmer. Signals Kydo is interpreting the conversation. */
 .keywords {
-  margin-left: 0.6em;       /* one mono character — no extra gap */
+  margin-left: 0;           /* flush right after "listening_" — no space */
   letter-spacing: 0.005em;  /* match the mark-line */
   color: var(--dim);
   white-space: nowrap;

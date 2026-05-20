@@ -74,12 +74,12 @@ export function setupUI({ debug = false } = {}) {
     await wait(400);
   }
 
-  // Reverse typewriter: remove characters from the end, faster than typing.
+  // Reverse typewriter: remove characters from the end, deliberately, like unwriting.
   async function eraseTypewriter(el) {
     const chars = [...el.textContent];
     for (let i = chars.length - 1; i >= 0; i--) {
       el.textContent = chars.slice(0, i).join('');
-      await wait(16);
+      await wait(45);
     }
   }
 
