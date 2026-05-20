@@ -208,10 +208,10 @@ app.post('/api/generate', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'no-anthropic-key' });
   }
-  const { transcript = '', recentTopics = [] } = req.body || {};
+  const { transcript = '', recentTopics = [], recentQuestions = [] } = req.body || {};
 
   try {
-    const systemPrompt = buildSystemPrompt({ recentTopics, transcript });
+    const systemPrompt = buildSystemPrompt({ recentTopics, transcript, recentQuestions });
 
     const raw = await callAnthropic({
       model: GENERATOR_MODEL,

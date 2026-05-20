@@ -52,9 +52,11 @@ WHAT YOU HATE: any sentence whose key noun could be swapped for its opposite wit
 
 const CLOSER = `Ground the line in what they are actually discussing above. React to a theme, a claim, or an unspoken assumption from the last few minutes — turn it, don't echo their words back. When you have real material to work with, be specific to it; reach for a generic provocation only when the conversation gives you nothing.
 
+If the conversation text contains questions, DO NOT rephrase or restate them — those are not yours. Go somewhere they didn't: a sharper, more uncomfortable angle on the same theme.
+
 Now serve ONE line. Maximum 18 words. No preamble. No "Kydo says:". Just the line, alone on a line.`;
 
-export function buildSystemPrompt({ recentTopics = [], transcript = '' } = {}) {
+export function buildSystemPrompt({ recentTopics = [], transcript = '', recentQuestions = [] } = {}) {
   const vault = loadVault();
   const exemplars = vault.map((q) => `- ${q}`).join('\n');
 
@@ -66,6 +68,10 @@ export function buildSystemPrompt({ recentTopics = [], transcript = '' } = {}) {
     ? `CURRENT CONVERSATION (the last few minutes, transcribed — may have small errors). These are the themes and claims to react to:\n${transcript.trim()}`
     : 'CURRENT CONVERSATION: nothing yet. Open the hour with something oblique.';
 
+  const avoidBlock = recentQuestions.length === 0
+    ? ''
+    : `ALREADY ASKED — do NOT repeat, restate, or lightly rephrase any of these. Pick a genuinely different angle:\n- ${recentQuestions.join('\n- ')}`;
+
   return [
     PERSONA,
     RULES,
@@ -74,8 +80,9 @@ export function buildSystemPrompt({ recentTopics = [], transcript = '' } = {}) {
     `REFERENCE — these are the kind of lines you write:\n${exemplars}`,
     transcriptBlock,
     topicsBlock,
+    avoidBlock,
     CLOSER,
-  ].join('\n\n');
+  ].filter(Boolean).join('\n\n');
 }
 
 const JUDGE_INSTRUCTIONS = `You are a strict editor. You are reading a single line written by Kydo, a critic-bot designed to serve provocative questions during a live fireside chat.

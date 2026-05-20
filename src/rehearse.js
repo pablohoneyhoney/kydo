@@ -151,6 +151,7 @@ const historyCount = $('#history-count');
 
 let history = [];
 let currentCandidate = null;
+let sessionQuestions = []; // everything generated this session — fed back so it won't repeat
 
 $('#clear-transcript').addEventListener('click', () => {
   transcriptEl.value = '';
@@ -177,7 +178,7 @@ async function generate() {
     const r = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ transcript, recentTopics: [] }),
+      body: JSON.stringify({ transcript, recentTopics: [], recentQuestions: sessionQuestions.slice(-12) }),
     });
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
@@ -196,6 +197,7 @@ async function generate() {
     }
     const { question, judge } = await r.json();
     currentCandidate = { question, judge };
+    if (question) sessionQuestions.push(question); // remember so we don't regenerate it
     candidateText.textContent = question;
 
     candidateSource.textContent = 'llm';

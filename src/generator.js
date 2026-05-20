@@ -13,6 +13,12 @@ export class Generator {
     this.onLog = onLog || (() => {});
     this.recentTopics = []; // [{ word, t }]
     this.recentlyFiredFromVault = [];
+    this.recentQuestions = []; // last N fired lines, so we never repeat one
+  }
+
+  recordQuestion(q) {
+    this.recentQuestions.push(q);
+    if (this.recentQuestions.length > 12) this.recentQuestions.shift();
   }
 
   pruneTopics() {
@@ -56,7 +62,7 @@ export class Generator {
         const r = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ transcript, recentTopics }),
+          body: JSON.stringify({ transcript, recentTopics, recentQuestions: this.recentQuestions }),
         });
 
         if (!r.ok) {
@@ -93,6 +99,7 @@ export class Generator {
         // Accepted.
         const topics = extractTopicKeywords(question);
         this.recordTopics(topics);
+        this.recordQuestion(question);
         this.onLog({
           stage: 'accept',
           attempt,
@@ -114,6 +121,7 @@ export class Generator {
     const question = this.pickFromVault();
     const topics = extractTopicKeywords(question);
     this.recordTopics(topics);
+    this.recordQuestion(question);
     this.onLog({ stage: 'vault-fallback', question });
     return { source: 'vault', question };
   }
