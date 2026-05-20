@@ -84,8 +84,10 @@ export function setupUI({ debug = false } = {}) {
   }
 
   // The $state value: 'listening' (idle) or 'typing' (composing a line).
+  // Hide the keyword while typing — it's only relevant while listening.
   function setStateLabel(text) {
     if (markEl) markEl.textContent = text;
+    if (kwEl) kwEl.style.display = text === 'typing' ? 'none' : '';
   }
 
   // Single live keyword after "listening_". Re-renders (and re-fades) only when the

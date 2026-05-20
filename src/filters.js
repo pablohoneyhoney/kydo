@@ -2,6 +2,8 @@
 // Belt-and-suspenders check applied AFTER the server-side judge.
 // Catches deterministic violations (word count, banned phrases, names).
 
+import nlp from 'compromise';
+
 const BANNED_PHRASES = [
   'in the age of ai',
   'real art',
@@ -130,16 +132,35 @@ const COMMON = new Set([
   'everything','nothing','first','second','third','again','today','tonight',
   'yesterday','tomorrow','little','about','their','there','these','those',
   'whole','entire','actual','exactly','basically','obviously','definitely',
+  // modal / auxiliary verbs — compromise tags these as verbs but they aren't notable
+  'cannot','could','would','should','might','shall','will','wont','must',
+  'cant','dont','didnt','doesnt','isnt','arent','wasnt','werent','havent',
+  'hasnt','hadnt','wouldnt','couldnt','shouldnt','mustnt','gonna','wanna',
 ]);
+
+// Lowercased set of words tagged Noun or Verb by compromise. Used to keep the
+// keyword ticker to nouns/verbs only (no adjectives/adverbs/filler).
+function nounVerbWords(text) {
+  try {
+    const doc = nlp(text);
+    const arr = [...doc.match('#Noun').out('array'), ...doc.match('#Verb').out('array')];
+    return new Set(
+      arr.join(' ').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(Boolean)
+    );
+  } catch {
+    return null; // if NLP fails, fall back to allowing everything
+  }
+}
 
 /**
  * Pick the single most notable word from a chunk — the kind of word that could
- * inform the next question. Filters stopwords + common chatter, requires a bit of
- * length, and rewards proper-noun-like capitalization (Houdini, Maya, Barbarian).
+ * inform the next question. Only nouns or verbs; filters stopwords + common chatter,
+ * requires a bit of length, rewards proper-noun-like capitalization (Houdini, Maya).
  * Returns a lowercase word, or null if nothing notable is present.
  */
 export function pickNotableKeyword(text) {
   if (!text) return null;
+  const allowed = nounVerbWords(text); // null => allow all (NLP unavailable)
   let best = null;
   let bestScore = -1;
   for (const raw of text.split(/\s+/)) {
@@ -147,6 +168,7 @@ export function pickNotableKeyword(text) {
     if (clean.length < 5) continue;
     const lower = clean.toLowerCase();
     if (STOP.has(lower) || COMMON.has(lower)) continue;
+    if (allowed && !allowed.has(lower)) continue; // nouns/verbs only
     let score = clean.length;                   // longer ~ more substantial
     if (/^[A-Z][a-z]/.test(clean)) score += 4;  // proper-noun-ish bonus
     if (score > bestScore) { bestScore = score; best = lower; }
