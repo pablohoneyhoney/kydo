@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kydo · Rehearse</title>
+    <link rel="stylesheet" href="/src/rehearse.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Kydo · Rehearse</div>
+      <div class="status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">checking…</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- LEFT: simulated transcript + candidate generation -->
+      <section class="col">
+        <div class="card">
+          <h2>Simulated transcript</h2>
+          <p class="hint">
+            Paste a stretch of what you expect Robert to say, or read your prep aloud
+            into the live mic. The last ~90 seconds is sent as Kydo's context.
+          </p>
+          <textarea id="transcript" rows="6" placeholder="Last weeks ago I spent maybe two months building a system that does erosion simulations and then I asked an AI to do something like it and it just…"></textarea>
+          <div class="row">
+            <button id="generate" class="primary">Generate candidate</button>
+            <button id="clear-transcript">Clear</button>
+          </div>
+        </div>
+
+        <div class="card" id="candidate-card" hidden>
+          <h2>Candidate</h2>
+          <p id="candidate-text" class="candidate"></p>
+          <div class="meta">
+            <span class="pill" id="candidate-source">—</span>
+            <span class="pill" id="candidate-judge">—</span>
+            <span class="pill" id="candidate-filter">—</span>
+            <span class="pill" id="candidate-attempts">—</span>
+          </div>
+          <p id="candidate-reason" class="reason"></p>
+          <div class="row">
+            <button id="accept" class="primary">Accept → add to vault</button>
+            <button id="reject">Reject</button>
+            <button id="regenerate">Regenerate</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>History <span class="muted" id="history-count">(0)</span></h2>
+          <ol id="history" class="history"></ol>
+        </div>
+      </section>
+
+      <!-- RIGHT: live vault editor -->
+      <aside class="col">
+        <div class="card sticky">
+          <header class="card-head">
+            <h2>Vault <span class="muted" id="vault-count">(0)</span></h2>
+            <div class="row tight">
+              <button id="add-line">+ Add line</button>
+              <button id="save-vault" class="primary">Save vault</button>
+            </div>
+          </header>
+          <p class="hint">
+            These exemplars anchor Kydo's voice and serve as the fallback if generation fails.
+            Edit inline. Save commits to <code>src/vault.json</code>.
+          </p>
+          <ol id="vault" class="vault"></ol>
+          <p id="save-feedback" class="save-feedback"></p>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/rehearse.js"></script>
+  </body>
+</html>

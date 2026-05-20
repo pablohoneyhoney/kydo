@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Kydo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&display=swap"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <!-- Persistent terminal prompt mark, top-left -->
+    <div class="prompt" aria-hidden="true">
+      <span class="caret">&gt;</span> <span class="prompt-name">kydo</span>
+    </div>
+
+    <main id="stage" class="stage state-listening" aria-live="polite">
+      <!-- Listening state: ambient mark + waveform -->
+      <div class="listening" aria-hidden="true">
+        <div class="mark-line">
+          <span class="syntax">$</span><span class="var">state</span><span class="syntax"> = </span><span class="mark">listening</span><span class="caret-blink">_</span>
+        </div>
+        <div class="wave">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- Question state: a single line of text -->
+      <div class="question" role="status">
+        <div class="question-head">
+          <span class="syntax">$</span><span class="var">question</span><span class="syntax"> = [</span>
+        </div>
+        <p id="question-text"></p>
+        <div class="question-foot">
+          <span class="syntax">];</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Start gate: mic permission requires a user gesture -->
+    <div id="start-gate" class="start-gate" hidden>
+      <div class="start-inner">
+        <div class="start-prompt">
+          <span class="syntax">$</span> kydo --listen<span class="caret-blink">_</span>
+        </div>
+        <button id="start-button" type="button" class="start-button" aria-label="Start Kydo">
+          [ begin ]
+        </button>
+        <p id="start-message" class="start-message">
+          # kydo needs the mic to listen.
+        </p>
+      </div>
+    </div>
+
+    <!-- Dev-only overlay; visible with ?debug or in dev -->
+    <div id="debug" class="debug" hidden>
+      <div><span class="k">phase</span><span class="eq">=</span><span id="dbg-phase">—</span></div>
+      <div><span class="k">next_in</span><span class="eq">=</span><span id="dbg-next">—</span></div>
+      <div><span class="k">fired</span><span class="eq">=</span><span id="dbg-fired">0</span></div>
+      <div><span class="k">mic</span><span class="eq">=</span><span id="dbg-mic">—</span></div>
+      <div><span class="k">buffer</span><span class="eq">=</span><span id="dbg-buf">—</span></div>
+      <div class="tx"><span class="k">tx</span><span class="eq">=</span><span id="dbg-tx">—</span></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

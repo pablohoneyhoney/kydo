@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Kydo · Control</title>
+    <link rel="stylesheet" href="/src/control.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Kydo · Control</div>
+      <div class="status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">connecting…</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="state">
+        <div class="row">
+          <div class="k">phase</div>
+          <div class="v" id="s-phase">—</div>
+        </div>
+        <div class="row">
+          <div class="k">next in</div>
+          <div class="v" id="s-next">—</div>
+        </div>
+        <div class="row">
+          <div class="k">mic</div>
+          <div class="v" id="s-mic">—</div>
+        </div>
+        <div class="row">
+          <div class="k">fired</div>
+          <div class="v" id="s-fired">0</div>
+        </div>
+        <div class="row">
+          <div class="k">paused</div>
+          <div class="v" id="s-paused">—</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Last question</h2>
+        <p id="s-last">—</p>
+      </section>
+
+      <section class="controls">
+        <button class="big fire" data-action="fire">Fire now</button>
+        <button class="big skip" data-action="skip">Skip current</button>
+        <div class="row-buttons">
+          <button data-action="pause">Pause 5 min</button>
+          <button data-action="resume">Resume</button>
+        </div>
+        <button class="big kill" data-action="kill">Kill</button>
+        <button class="link" data-action="revive" hidden id="revive-btn">Revive</button>
+      </section>
+
+      <footer class="foot">
+        <a href="/rehearse.html">Rehearsal →</a>
+        <span class="dim" id="cmd-feedback"></span>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/control.js"></script>
+  </body>
+</html>
