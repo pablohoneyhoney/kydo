@@ -45,8 +45,8 @@ const HALLUCINATIONS = [
   /\bwright associate professor\b[^.!?]*/gi,
 
   // Video-credit hallucinations (YouTube training leftovers on near-silence)
-  /copyright\s*©[^.!?]*/gi,
-  /©\s*\d{4}[^.!?]*/g,
+  /(copyright\s*)?©[^.!?\n]*/gi,        // "© BF-WATCH TV 2021", "Copyright © ..."
+  /\bbf-?\s?watch\b[^.!?]*/gi,
   /\ball rights reserved\b\.?/gi,
   /\belement animation\b[^.!?]*/gi,
   /\bzazzy\b[^.!?]*/gi,

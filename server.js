@@ -149,11 +149,11 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     );
     fd.append('model', 'whisper-1');
     fd.append('language', 'en');
-    fd.append('response_format', 'json');
+    // verbose_json gives per-segment no_speech_prob + avg_logprob, which we use to
+    // reject silence hallucinations ("Thank you", "© BF-WATCH TV", etc.) at the source.
+    fd.append('response_format', 'verbose_json');
     fd.append('temperature', '0'); // deterministic; less prone to invented filler
-    // NO `prompt` bias. A prompt makes Whisper echo it verbatim on near-silent audio —
-    // it will literally print "Robert Hodgin, Houdini, Cinder..." as if transcribed.
-    // Minor proper-noun misspellings are fine; the LLM and keyword picker tolerate them.
+    // NO `prompt` bias. A prompt makes Whisper echo it verbatim on near-silent audio.
 
     const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -169,6 +169,20 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
 
     const json = await r.json();
     const text = (json.text || '').trim();
+
+    // Whisper's own confidence — reject likely-silence hallucinations. On contentless
+    // audio Whisper still emits stock phrases, but flags them with a high no_speech_prob
+    // and/or a very low avg_logprob. We drop those.
+    const segs = Array.isArray(json.segments) ? json.segments : [];
+    if (segs.length > 0) {
+      const mean = (key) => segs.reduce((s, x) => s + (x[key] ?? 0), 0) / segs.length;
+      const noSpeech = mean('no_speech_prob');
+      const logprob = mean('avg_logprob');
+      if (noSpeech > 0.6 || logprob < -1.0) {
+        return res.json({ text: '', dropped: 'low-confidence', noSpeech: +noSpeech.toFixed(2), logprob: +logprob.toFixed(2) });
+      }
+    }
+
     res.json({ text });
   } catch (e) {
     console.error('[kydo] transcribe error', e);
