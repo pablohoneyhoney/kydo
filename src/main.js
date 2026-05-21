@@ -38,20 +38,12 @@ let micState = 'off';
 let lastTranscriptAt = 0;  // for debug visibility only
 let lastSpeechAt = 0;       // amplitude-based; this is what the guard reads
 let prevTriggerChunk = '';  // last cleaned chunk, for boundary-spanning trigger match
-// Rolling set of recent nouns/verbs shown after "listening_", updating dynamically
-// as the conversation moves. New keywords push older ones off the end.
-let rollingKeywords = [];
-const KEYWORD_MAX = 5;
-
+// A single keyword after "listening_" that changes dynamically — each chunk swaps
+// it to the best noun/verb heard, so it tracks the conversation in real time.
+// A chunk with nothing notable leaves the current word in place.
 function updateKeywords(chunkText) {
-  const fresh = pickNotableKeywords(chunkText, 3);
-  if (fresh.length === 0) return; // nothing notable this chunk — leave the set as-is
-  for (const k of fresh) {
-    rollingKeywords = rollingKeywords.filter((x) => x !== k); // dedupe, move to newest
-    rollingKeywords.push(k);
-  }
-  rollingKeywords = rollingKeywords.slice(-KEYWORD_MAX);
-  ui.setKeywords(rollingKeywords);
+  const best = pickNotableKeywords(chunkText, 1)[0];
+  if (best) ui.setKeyword(best);
 }
 
 mic.onAmplitude((avg) => {

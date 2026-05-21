@@ -90,29 +90,18 @@ export function setupUI({ debug = false } = {}) {
     if (kwEl) kwEl.style.display = text === 'typing' ? 'none' : '';
   }
 
-  // Rolling live keywords after "listening_". Reconciles the DOM so words already
-  // shown stay put (no re-flicker) while new ones fade in and dropped ones disappear.
-  function setKeywords(words) {
+  // A single live keyword after "listening_" that changes dynamically. Re-renders
+  // (and re-fades) only when the word actually changes, so it doesn't flicker.
+  function setKeyword(word) {
     if (!kwEl) return;
-    const list = Array.isArray(words) ? words : [];
-    const existing = new Map(
-      [...kwEl.querySelectorAll('.kw')].map((el) => [el.textContent, el])
-    );
-    const frag = document.createDocumentFragment();
-    for (const w of list) {
-      let span = existing.get(w);
-      if (span) {
-        existing.delete(w);
-        span.style.animation = 'none'; // already on screen — don't re-fade
-      } else {
-        span = document.createElement('span');
-        span.className = 'kw';
-        span.textContent = w; // new span keeps the CSS fade-in
-      }
-      frag.appendChild(span);
-    }
+    if (!word) return;                     // nothing new — keep the current word
+    if (kwEl.dataset.kw === word) return;  // same word — don't re-animate
+    kwEl.dataset.kw = word;
     kwEl.innerHTML = '';
-    kwEl.appendChild(frag);
+    const span = document.createElement('span');
+    span.className = 'kw';
+    span.textContent = word;
+    kwEl.appendChild(span);
   }
 
   async function typewriter(el, text) {
@@ -174,7 +163,7 @@ export function setupUI({ debug = false } = {}) {
     setDebug,
     appendTranscript,
     setStateLabel,
-    setKeywords,
+    setKeyword,
     showStartGate,
     hideStartGate,
     showStartError,
