@@ -243,8 +243,15 @@ async function startMic() {
 ui.onStart(startMic);
 
 // Manual fire bypasses the mid-sentence guard. If you press a key, you mean it.
-function manualFire(source = 'key') {
-  if (ui.getPhase() !== 'listening' || firingInProgress || killed) return;
+// If a question is currently on screen, this OVERRIDES it: dismiss it, then fire fresh.
+async function manualFire(source = 'key') {
+  if (killed) return;
+  if (firingInProgress) {
+    // Something is showing (or composing) — interrupt it and wait for it to unwind.
+    ui.interrupt();
+    for (let i = 0; i < 120 && firingInProgress; i++) await wait(50); // ~6s safety cap
+  }
+  if (killed || firingInProgress || ui.getPhase() !== 'listening') return;
   logEvent({ type: 'manual-fire', source });
   firingInProgress = true;
   fire().finally(() => { firingInProgress = false; });

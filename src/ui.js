@@ -24,6 +24,29 @@ export function setupUI({ debug = false } = {}) {
   let startHandlers = [];
   let recentTranscript = [];
 
+  // Interrupt support: lets a displayed question be dismissed early (manual override).
+  let interruptFlag = false;
+  let holdResolve = null;
+  let holdTimer = null;
+
+  function interrupt() {
+    interruptFlag = true;
+    if (holdResolve) {
+      clearTimeout(holdTimer);
+      const r = holdResolve;
+      holdResolve = null;
+      holdTimer = null;
+      r(); // end the current hold immediately
+    }
+  }
+
+  function interruptibleWait(ms) {
+    return new Promise((resolve) => {
+      holdTimer = setTimeout(() => { holdResolve = null; holdTimer = null; resolve(); }, ms);
+      holdResolve = resolve;
+    });
+  }
+
   function setPhase(next) {
     phase = next;
     stage.classList.remove('state-listening', 'state-question');
@@ -47,6 +70,7 @@ export function setupUI({ debug = false } = {}) {
   }
 
   async function showQuestion(text, holdMs, opts = {}) {
+    interruptFlag = false; // fresh question — clear any prior interrupt
     applyFrame(opts.kind || 'question');
 
     // Reset text for the typewriter
@@ -60,26 +84,28 @@ export function setupUI({ debug = false } = {}) {
     const typingMs = await typewriter(qText, text);
     qText.classList.remove('typing');
 
-    // Hold for the rest of the configured time, minus what typing already consumed.
-    const remaining = Math.max(500, holdMs - typingMs);
-    await wait(remaining);
+    // Hold for the rest of the configured time, unless interrupted (manual override).
+    if (!interruptFlag) {
+      const remaining = Math.max(500, holdMs - typingMs);
+      await interruptibleWait(remaining);
+    }
 
-    // Erase the line in reverse — like deleting it — instead of a plain fade.
+    // Erase the line in reverse. Snappier if we were interrupted (you want it gone).
     qText.classList.add('erasing');
-    await eraseTypewriter(qText);
+    await eraseTypewriter(qText, interruptFlag ? 12 : 45);
     qText.classList.remove('erasing');
 
     setPhase('listening');
     setStateLabel('listening'); // back to idle exactly as the listening view returns
-    await wait(400);
+    await wait(interruptFlag ? 0 : 400);
   }
 
   // Reverse typewriter: remove characters from the end, deliberately, like unwriting.
-  async function eraseTypewriter(el) {
+  async function eraseTypewriter(el, perChar = 45) {
     const chars = [...el.textContent];
     for (let i = chars.length - 1; i >= 0; i--) {
       el.textContent = chars.slice(0, i).join('');
-      await wait(45);
+      await wait(perChar);
     }
   }
 
@@ -109,6 +135,7 @@ export function setupUI({ debug = false } = {}) {
     const chars = [...text]; // unicode-safe iteration
     let buffer = '';
     for (const c of chars) {
+      if (interruptFlag) { el.textContent = text; break; } // finish instantly if overridden
       buffer += c;
       el.textContent = buffer;
       // Pacing: punctuation pauses longer; spaces faster; everything else steady.
@@ -164,6 +191,7 @@ export function setupUI({ debug = false } = {}) {
     appendTranscript,
     setStateLabel,
     setKeyword,
+    interrupt,
     showStartGate,
     hideStartGate,
     showStartError,
