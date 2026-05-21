@@ -66,6 +66,12 @@ export const TRIGGERS = [
     response: "What's up?",
   },
   {
+    id: 'howareyou',
+    // "how are you" (with or without a name) — a scripted bit.
+    pattern: /\bhow are you\b/i,
+    response: "I'm happy to be participating, but your laptop is burning like NYC yesterday.",
+  },
+  {
     id: 'bare',
     // A strong, unambiguous Kydo spelling on its own — default friendly reply.
     pattern: new RegExp(`\\b${STRONG}\\b`, 'i'),

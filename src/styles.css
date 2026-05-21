@@ -128,6 +128,11 @@ html, body {
   animation: kw-in 600ms var(--ease-out) both;
 }
 
+/* first keyword flush after "listening_", the rest spaced like words */
+.keywords .kw + .kw {
+  margin-left: 0.6em;
+}
+
 @keyframes kw-in {
   from { opacity: 0; }
   to   { opacity: 0.85; }

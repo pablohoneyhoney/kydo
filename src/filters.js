@@ -159,21 +159,33 @@ function nounVerbWords(text) {
  * Returns a lowercase word, or null if nothing notable is present.
  */
 export function pickNotableKeyword(text) {
-  if (!text) return null;
+  return pickNotableKeywords(text, 1)[0] || null;
+}
+
+/**
+ * Pick up to `max` notable nouns/verbs from a chunk, best first. Used to feed a
+ * rolling, dynamic keyword ticker. Filters stopwords + common chatter, requires
+ * length >= 4, restricts to Noun/Verb (compromise), rewards proper-noun caps.
+ */
+export function pickNotableKeywords(text, max = 3) {
+  if (!text) return [];
   const allowed = nounVerbWords(text); // null => allow all (NLP unavailable)
-  let best = null;
-  let bestScore = -1;
+  const scored = [];
+  const seen = new Set();
   for (const raw of text.split(/\s+/)) {
     const clean = raw.replace(/[^A-Za-z]/g, '');
-    if (clean.length < 5) continue;
+    if (clean.length < 4) continue;
     const lower = clean.toLowerCase();
+    if (seen.has(lower)) continue;
     if (STOP.has(lower) || COMMON.has(lower)) continue;
     if (allowed && !allowed.has(lower)) continue; // nouns/verbs only
+    seen.add(lower);
     let score = clean.length;                   // longer ~ more substantial
     if (/^[A-Z][a-z]/.test(clean)) score += 4;  // proper-noun-ish bonus
-    if (score > bestScore) { bestScore = score; best = lower; }
+    scored.push({ word: lower, score });
   }
-  return best;
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, max).map((s) => s.word);
 }
 
 function escape(s) {

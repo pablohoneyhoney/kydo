@@ -7,14 +7,14 @@ import { TranscriptBuffer } from './transcript.js';
 import { Generator } from './generator.js';
 import { cleanChunk } from './whisper-filter.js';
 import { matchTrigger, TRIGGERS } from './triggers.js';
-import { pickNotableKeyword } from './filters.js';
+import { pickNotableKeywords } from './filters.js';
 import vault from './vault.json';
 
 // --- Config ---------------------------------------------------------
 const params = new URLSearchParams(location.search);
 const FAST = params.has('fast');
 const NO_MIC = params.has('nomic');
-const CYCLE_SECONDS = FAST ? 20 : 300;
+const CYCLE_SECONDS = FAST ? 20 : 600; // 10 min between auto-questions (Cmd+Enter fires anytime)
 const HOLD_SECONDS  = FAST ? 8  : 60;
 const DEBUG         = params.has('debug') || FAST || import.meta.env.DEV;
 
@@ -29,30 +29,29 @@ const SPEECH_AMPLITUDE_THRESHOLD = 0.10;  // boosted mic level (0..1) that count
 const ui = setupUI({ debug: DEBUG });
 
 // --- Transcript + Mic ----------------------------------------------
-// 4-minute window: questions fire every 5 min, so this lets Kydo draw on the
-// themes from most of the stretch since its last question — not just the last
-// few seconds. Decoupled from chunk size (which only governs trigger latency).
-const transcript = new TranscriptBuffer({ windowMs: 240_000 });
+// 10-minute window to match the question cadence: Kydo contextualizes from the
+// whole stretch of listening since its last question. Decoupled from chunk size
+// (which only governs trigger latency).
+const transcript = new TranscriptBuffer({ windowMs: 600_000 });
 const mic = new Mic();
 let micState = 'off';
 let lastTranscriptAt = 0;  // for debug visibility only
 let lastSpeechAt = 0;       // amplitude-based; this is what the guard reads
 let prevTriggerChunk = '';  // last cleaned chunk, for boundary-spanning trigger match
-// One notable keyword shown after "listening_". It holds, and only swaps when a
-// genuinely more relevant word appears — no constant flicker.
-let currentKeyword = '';
-let currentKeywordAt = 0;
-const KEYWORD_MIN_HOLD_MS = 5000; // don't change the displayed word more often than this
+// Rolling set of recent nouns/verbs shown after "listening_", updating dynamically
+// as the conversation moves. New keywords push older ones off the end.
+let rollingKeywords = [];
+const KEYWORD_MAX = 5;
 
 function updateKeywords(chunkText) {
-  const best = pickNotableKeyword(chunkText);
-  if (!best) return; // nothing notable this chunk — keep showing the current word
-  const now = Date.now();
-  if (best !== currentKeyword && now - currentKeywordAt >= KEYWORD_MIN_HOLD_MS) {
-    currentKeyword = best;
-    currentKeywordAt = now;
-    ui.setKeyword(best);
+  const fresh = pickNotableKeywords(chunkText, 3);
+  if (fresh.length === 0) return; // nothing notable this chunk — leave the set as-is
+  for (const k of fresh) {
+    rollingKeywords = rollingKeywords.filter((x) => x !== k); // dedupe, move to newest
+    rollingKeywords.push(k);
   }
+  rollingKeywords = rollingKeywords.slice(-KEYWORD_MAX);
+  ui.setKeywords(rollingKeywords);
 }
 
 mic.onAmplitude((avg) => {
