@@ -263,9 +263,16 @@ const TRIGGER_HOLD_MS = 12_000;       // replies are short — don't linger like
 const TRIGGER_COOLDOWN_MS = 15_000;   // don't re-fire the same trigger from overlapping chunks
 const lastTriggerAt = {};
 
-function fireTrigger(trigger) {
+async function fireTrigger(trigger) {
   const now = Date.now();
   if (lastTriggerAt[trigger.id] && now - lastTriggerAt[trigger.id] < TRIGGER_COOLDOWN_MS) return;
+  if (killed) return;
+  // If something is already on screen (e.g. a previous trigger reply), override it —
+  // a follow-up trigger should respond, not get dropped.
+  if (firingInProgress) {
+    ui.interrupt();
+    for (let i = 0; i < 120 && firingInProgress; i++) await wait(50); // ~6s safety cap
+  }
   if (killed || firingInProgress || ui.getPhase() !== 'listening') return;
   lastTriggerAt[trigger.id] = now;
   logEvent({ type: 'trigger', id: trigger.id, response: trigger.response });
