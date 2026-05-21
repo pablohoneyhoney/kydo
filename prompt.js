@@ -56,7 +56,7 @@ If the conversation text contains questions, DO NOT rephrase or restate them —
 
 Now serve ONE line. Maximum 18 words. No preamble. No "Kydo says:". Just the line, alone on a line.`;
 
-export function buildSystemPrompt({ recentTopics = [], transcript = '', recentQuestions = [] } = {}) {
+export function buildSystemPrompt({ recentTopics = [], transcript = '', recentQuestions = [], formDirective = '' } = {}) {
   const vault = loadVault();
   const exemplars = vault.map((q) => `- ${q}`).join('\n');
 
@@ -70,7 +70,9 @@ export function buildSystemPrompt({ recentTopics = [], transcript = '', recentQu
 
   const avoidBlock = recentQuestions.length === 0
     ? ''
-    : `ALREADY ASKED — do NOT repeat, restate, or lightly rephrase any of these. Pick a genuinely different angle:\n- ${recentQuestions.join('\n- ')}`;
+    : `ALREADY ASKED THIS SESSION — your new line must NOT repeat, rephrase, or cover the same idea, theme, or angle as ANY of these. Open a genuinely new direction. Also vary your FORM: don't reuse an opening pattern you've already used (e.g. several "If…" or "When…" lines), and alternate between questions and statements.\n- ${recentQuestions.join('\n- ')}`;
+
+  const formBlock = formDirective ? `FORM FOR THIS LINE (follow it, it keeps the session varied): ${formDirective}` : '';
 
   return [
     PERSONA,
@@ -81,6 +83,7 @@ export function buildSystemPrompt({ recentTopics = [], transcript = '', recentQu
     transcriptBlock,
     topicsBlock,
     avoidBlock,
+    formBlock,
     CLOSER,
   ].filter(Boolean).join('\n\n');
 }
@@ -97,6 +100,7 @@ REJECT the line if any of these are true:
 - Compliments the speakers or anyone.
 - Is a clean platitude with no edge — the kind of thing that could appear on a motivational poster.
 - The key noun could be replaced with its opposite without anyone noticing.
+- It repeats, rephrases, or covers the same idea/theme/angle as a line already asked this session (see list below), or reuses the same opening pattern.
 
 ACCEPT the line if it has bite, specificity, knowledge of the field, and the voice of a sharp critic who is paying attention.
 
@@ -105,6 +109,9 @@ PASS
 or
 REJECT: <one-sentence reason, no preamble>`;
 
-export function buildJudgePrompt(candidate) {
-  return `${JUDGE_INSTRUCTIONS}\n\nLINE:\n${candidate}`;
+export function buildJudgePrompt(candidate, recentQuestions = []) {
+  const askedBlock = recentQuestions.length === 0
+    ? ''
+    : `\n\nALREADY ASKED THIS SESSION (reject the line if it restates or resembles any — same idea, theme, angle, or opening pattern):\n- ${recentQuestions.join('\n- ')}`;
+  return `${JUDGE_INSTRUCTIONS}${askedBlock}\n\nLINE:\n${candidate}`;
 }

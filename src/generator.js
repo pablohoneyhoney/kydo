@@ -7,18 +7,56 @@ import { checkQuestion, extractTopicKeywords } from './filters.js';
 const TOPIC_COOLDOWN_MS = 20 * 60 * 1000; // 20 min
 const MAX_RETRIES = 2; // retry generation up to 2 more times after initial attempt
 
+// Rotated each fire so consecutive questions take structurally different shapes —
+// the strongest lever against the whole session sounding the same ("If… If… If…").
+const FORMS = [
+  'Form this line as a flat declarative statement — no question mark.',
+  'Form this line by demanding the definition of a word they leaned on.',
+  'Form this line as a comparison to another era, medium, or craft.',
+  'Form this line by naming a cost or contradiction they are glossing over.',
+  'Form this line around something concrete and physical, not abstract.',
+  'Form this line as a short either/or.',
+  'Form this line toward the audience or the wider field, not the two speakers.',
+];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export class Generator {
   constructor({ vault, onLog }) {
     this.vault = vault;
     this.onLog = onLog || (() => {});
     this.recentTopics = []; // [{ word, t }]
     this.recentlyFiredFromVault = [];
-    this.recentQuestions = []; // last N fired lines, so we never repeat one
+    this.recentQuestions = []; // session questions, so we never repeat or echo one
+    this.formQueue = [];       // shuffled FORMS indices, refilled when empty
+  }
+
+  nextForm() {
+    if (this.formQueue.length === 0) {
+      this.formQueue = shuffle([...FORMS.keys()]);
+    }
+    return FORMS[this.formQueue.shift()];
   }
 
   recordQuestion(q) {
     this.recentQuestions.push(q);
-    if (this.recentQuestions.length > 12) this.recentQuestions.shift();
+    // Keep the whole session (capped generously) so questions stay distinct across
+    // the entire talk, not just the last few.
+    if (this.recentQuestions.length > 40) this.recentQuestions.shift();
+  }
+
+  recordQuestion(q) {
+    this.recentQuestions.push(q);
+    // Keep the whole session (capped generously) so questions stay distinct across
+    // the entire talk, not just the last few.
+    if (this.recentQuestions.length > 40) this.recentQuestions.shift();
   }
 
   pruneTopics() {
@@ -56,13 +94,14 @@ export class Generator {
 
   async generate({ transcript }) {
     const recentTopics = this.getRecentTopicWords();
+    const formDirective = this.nextForm(); // one form per fire (held across retries)
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const r = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ transcript, recentTopics, recentQuestions: this.recentQuestions }),
+          body: JSON.stringify({ transcript, recentTopics, recentQuestions: this.recentQuestions, formDirective }),
         });
 
         if (!r.ok) {

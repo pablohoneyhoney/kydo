@@ -222,10 +222,10 @@ app.post('/api/generate', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'no-anthropic-key' });
   }
-  const { transcript = '', recentTopics = [], recentQuestions = [] } = req.body || {};
+  const { transcript = '', recentTopics = [], recentQuestions = [], formDirective = '' } = req.body || {};
 
   try {
-    const systemPrompt = buildSystemPrompt({ recentTopics, transcript, recentQuestions });
+    const systemPrompt = buildSystemPrompt({ recentTopics, transcript, recentQuestions, formDirective });
 
     const raw = await callAnthropic({
       model: GENERATOR_MODEL,
@@ -245,7 +245,7 @@ app.post('/api/generate', async (req, res) => {
     try {
       const judgement = await callAnthropic({
         model: JUDGE_MODEL,
-        user: buildJudgePrompt(candidate),
+        user: buildJudgePrompt(candidate, recentQuestions),
         maxTokens: 80,
       });
       const trimmed = judgement.trim();
